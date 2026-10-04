@@ -1,7 +1,8 @@
 ﻿streamlit
 pandas
 SQLAlchemy
-psycopg2-binary
+psycopg
+psycopg-binary
 python-dotenv
 langchain-core
 langchain-groq
