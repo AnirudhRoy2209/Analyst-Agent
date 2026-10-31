@@ -18,7 +18,7 @@ def pickllm(level: str):
         model_map = {
             "low": "gemini-2.5-flash",
             "medium": "gemini-2.5-flash",
-            "high": "gemini-3.1-pro-preview",
+            "high": "gemini-2.5-flash",
         }
         return ChatGoogleGenerativeAI(
             model=model_map[level],
