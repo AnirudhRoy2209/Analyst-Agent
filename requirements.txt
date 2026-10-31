@@ -4,7 +4,12 @@ SQLAlchemy
 psycopg
 psycopg-binary
 python-dotenv
+requests
+pyarrow
+pydantic
+langchain
 langchain-core
+langchain-community
 langchain-groq
 langchain-google-genai
 langchain-mistralai

@@ -27,9 +27,7 @@ def extract_text(msg):
 
 
 def run_agent(question: str, extra_context: str = ""):
-    # CRITICAL FIX: Import the agent here (lazy loading). 
-    # This ensures the agent is initialized AFTER the user has set their API key 
-    # in the Streamlit sidebar, preventing initialization errors.
+    # Lazy loading so the agent initializes AFTER the API key is set in os.environ
     from agents.data_agent import data_agent
 
     full_question = f"{question}\n{extra_context}" if extra_context else question
@@ -40,15 +38,28 @@ def run_agent(question: str, extra_context: str = ""):
     return extract_text(response["messages"][-1])
 
 
+def get_env_or_secret(key: str, default: str = None):
+    """Fetch from os.environ first, then fallback to Streamlit Cloud secrets."""
+    val = os.getenv(key)
+    if val:
+        return val
+    try:
+        if key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return default
+
+
 def get_postgres_engine():
-    """Build a SQLAlchemy engine from .env — handles special chars in password."""
+    """Build a SQLAlchemy engine from .env or Streamlit Secrets."""
     url = URL.create(
         drivername="postgresql",
-        username=os.getenv("user"),
-        password=os.getenv("password"),
-        host=os.getenv("host"),
-        port=int(os.getenv("port", "5432")),
-        database=os.getenv("database"),
+        username=get_env_or_secret("user"),
+        password=get_env_or_secret("password"),
+        host=get_env_or_secret("host"),
+        port=int(get_env_or_secret("port", "5432")),
+        database=get_env_or_secret("database"),
     )
     return create_engine(url)
 
@@ -70,6 +81,7 @@ st.markdown(
 
         html, body, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #0f172a;
         }
 
         :root {
@@ -77,7 +89,7 @@ st.markdown(
             --accent-light: #eef2ff;
             --accent-dark: #4338ca;
             --ink: #0f172a;
-            --muted: #64748b;
+            --muted: #475569;
             --border: #e2e8f0;
             --surface: #ffffff;
             --bg: #f8fafc;
@@ -85,10 +97,23 @@ st.markdown(
             --danger: #dc2626;
         }
 
-        /* App background */
-        .stApp { background: var(--bg); }
+        /* App background & force dark text against light surfaces even in OS Dark Mode */
+        .stApp { 
+            background: var(--bg) !important; 
+            color: var(--ink) !important; 
+        }
         #MainMenu, footer, header {visibility: hidden;}
         .block-container { padding-top: 1.5rem; max-width: 1100px; }
+
+        /* Force all markdown text inside main app, chat, and expanders to be dark */
+        .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+        div[data-testid="stChatMessageContent"] p,
+        div[data-testid="stChatMessageContent"] div,
+        div[data-testid="stChatMessageContent"] span,
+        div[data-testid="stChatMessageContent"] li,
+        div[data-testid="stChatMessageContent"] code {
+            color: var(--ink) !important;
+        }
 
         /* ---------- Hero header ---------- */
         .hero {
@@ -108,15 +133,15 @@ st.markdown(
             border-radius: 50%;
         }
         .hero-eyebrow {
-            color: #c7d2fe; font-size: 0.72rem; font-weight: 600;
+            color: #c7d2fe !important; font-size: 0.72rem; font-weight: 600;
             letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.5rem;
         }
         .hero-title {
-            color: #ffffff; font-size: 1.9rem; font-weight: 800;
+            color: #ffffff !important; font-size: 1.9rem; font-weight: 800;
             margin: 0; letter-spacing: -0.02em;
         }
         .hero-sub {
-            color: #e0e7ff; font-size: 0.95rem; margin-top: 0.4rem;
+            color: #e0e7ff !important; font-size: 0.95rem; margin-top: 0.4rem;
             font-weight: 400; max-width: 640px; line-height: 1.5;
         }
 
@@ -137,17 +162,21 @@ st.markdown(
         }
         .cap-icon.sql { background: var(--accent-light); }
         .cap-icon.etl { background: #ecfdf5; }
-        .cap-title { font-weight: 700; font-size: 0.92rem; color: var(--ink); margin-bottom: 0.25rem; }
-        .cap-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.45; margin: 0; }
+        .cap-title { font-weight: 700; font-size: 0.92rem; color: var(--ink) !important; margin-bottom: 0.25rem; }
+        .cap-desc { font-size: 0.82rem; color: var(--muted) !important; line-height: 1.45; margin: 0; }
 
         /* ---------- Sidebar ---------- */
         section[data-testid="stSidebar"] {
-            background: var(--surface); border-right: 1px solid var(--border);
+            background: var(--surface) !important; border-right: 1px solid var(--border);
         }
         section[data-testid="stSidebar"] .block-container { padding-top: 1.6rem; }
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] .stCaption {
+            color: var(--ink) !important;
+        }
         .sb-section-label {
             font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
-            text-transform: uppercase; color: var(--muted);
+            text-transform: uppercase; color: var(--muted) !important;
             margin: 1.1rem 0 0.5rem 0; display: flex; align-items: center; gap: 0.4rem;
         }
         .sb-brand { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.2rem; }
@@ -155,20 +184,20 @@ st.markdown(
             width: 30px; height: 30px; border-radius: 8px;
             background: linear-gradient(135deg, var(--accent), var(--accent-dark));
             display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 800; font-size: 0.85rem;
+            color: white !important; font-weight: 800; font-size: 0.85rem;
         }
-        .sb-brand-name { font-weight: 700; font-size: 1.02rem; color: var(--ink); }
+        .sb-brand-name { font-weight: 700; font-size: 1.02rem; color: var(--ink) !important; }
         .status-pill {
             display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem;
             font-weight: 600; padding: 0.28rem 0.6rem; border-radius: 999px; margin-top: 0.4rem;
         }
-        .status-pill.on { background: #ecfdf5; color: var(--success); }
+        .status-pill.on { background: #ecfdf5; color: var(--success) !important; }
         .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
         /* ---------- Buttons & inputs ---------- */
         .stButton > button {
             border-radius: 9px; font-weight: 600; font-size: 0.85rem;
-            border: 1px solid var(--accent); background: var(--accent); color: white;
+            border: 1px solid var(--accent); background: var(--accent); color: white !important;
             padding: 0.45rem 1rem; transition: all 0.15s ease;
         }
         .stButton > button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
@@ -178,8 +207,9 @@ st.markdown(
 
         /* ---------- Chat & Misc ---------- */
         .stChatMessage {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 14px; padding: 0.3rem 0.4rem; margin-bottom: 0.6rem;
+            background: var(--surface) !important; border: 1px solid var(--border) !important;
+            border-radius: 14px; padding: 0.6rem 0.8rem; margin-bottom: 0.6rem;
+            color: var(--ink) !important;
         }
         div[data-testid="stChatInput"] textarea { border-radius: 12px; }
         hr { border: none; border-top: 1px solid var(--border); margin: 0.9rem 0; }
@@ -292,11 +322,6 @@ elif provider == "Google Gemini":
     os.environ["GOOGLE_API_KEY"] = api_key
 elif provider == "Mistral":
     os.environ["MISTRAL_API_KEY"] = api_key
-
-# ============================================================
-# Build Context & Chat UI
-# ============================================================
-# ... rest of your code (extra_context logic, chat UI, etc.) ...
 
 # ============================================================
 # Build Context & Chat UI
