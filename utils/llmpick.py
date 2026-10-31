@@ -16,9 +16,9 @@ def pickllm(level: str):
     # 1. Google Gemini
     if provider == "Google Gemini" or (not provider and os.getenv("GOOGLE_API_KEY")):
         model_map = {
-            "low": "gemini-2.5-flash",
-            "medium": "gemini-2.5-flash",
-            "high": "gemini-2.5-flash",
+            "low": "gemini-3.8-flash",
+            "medium": "gemini-3.8-flash",
+            "high": "gemini-3.8-flash",
         }
         return ChatGoogleGenerativeAI(
             model=model_map[level],
