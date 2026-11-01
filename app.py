@@ -13,10 +13,11 @@ from langchain_core.messages import HumanMessage
 load_dotenv()
 try:
     for k in ("host", "port", "user", "password", "database"):
-        if k in st.secrets and k not in os.environ:
+        if k in st.secrets:
             os.environ[k] = str(st.secrets[k])
 except Exception:
     pass
+
 
 # ============================================================
 # Helpers
@@ -45,15 +46,16 @@ def run_agent(question: str, extra_context: str = ""):
 
 
 def get_env_or_secret(key: str, default: str = None):
-    """Fetch from os.environ first, then fallback to Streamlit Cloud secrets."""
-    val = os.getenv(key)
-    if val:
-        return val
+    """Fetch from Streamlit Cloud secrets FIRST, then fallback to os.environ."""
     try:
         if key in st.secrets:
             return st.secrets[key]
     except Exception:
         pass
+
+    val = os.getenv(key)
+    if val:
+        return val
     return default
 
 
@@ -85,11 +87,6 @@ st.markdown(
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-        html, body, [class*="css"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #0f172a;
-        }
-
         :root {
             --accent: #6366f1;
             --accent-light: #eef2ff;
@@ -101,9 +98,15 @@ st.markdown(
             --bg: #f8fafc;
             --success: #059669;
             --danger: #dc2626;
+            color-scheme: light !important;
         }
 
-        /* App background & force dark text against light surfaces even in OS Dark Mode */
+        html, body, [class*="css"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--ink);
+        }
+
+        /* App background & main container */
         .stApp { 
             background: var(--bg) !important; 
             color: var(--ink) !important; 
@@ -111,17 +114,21 @@ st.markdown(
         #MainMenu, footer, header {visibility: hidden;}
         .block-container { padding-top: 1.5rem; max-width: 1100px; }
 
-        /* Force all markdown text inside main app, chat, and expanders to be dark */
-        .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+        /* Chat message text color (scoped so it doesn't break the Hero banner) */
         div[data-testid="stChatMessageContent"] p,
         div[data-testid="stChatMessageContent"] div,
         div[data-testid="stChatMessageContent"] span,
-        div[data-testid="stChatMessageContent"] li,
-        div[data-testid="stChatMessageContent"] code {
+        div[data-testid="stChatMessageContent"] li {
             color: var(--ink) !important;
         }
+        div[data-testid="stChatMessageContent"] code {
+            color: var(--accent-dark) !important;
+            background: var(--accent-light) !important;
+            padding: 0.1rem 0.35rem;
+            border-radius: 5px;
+        }
 
-        /* ---------- Hero header ---------- */
+        /* ---------- Hero header (Force white text inside gradient banner) ---------- */
         .hero {
             background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 55%, #6366f1 100%);
             border-radius: 20px;
@@ -138,23 +145,54 @@ st.markdown(
             background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
             border-radius: 50%;
         }
-        .hero-eyebrow {
+        .hero .hero-eyebrow {
             color: #c7d2fe !important; font-size: 0.72rem; font-weight: 600;
             letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.5rem;
         }
-        .hero-title {
+        .hero h1.hero-title {
             color: #ffffff !important; font-size: 1.9rem; font-weight: 800;
             margin: 0; letter-spacing: -0.02em;
         }
-        .hero-sub {
+        .hero h1.hero-title a {
+            display: none !important;
+        }
+        .hero p.hero-sub {
             color: #e0e7ff !important; font-size: 0.95rem; margin-top: 0.4rem;
             font-weight: 400; max-width: 640px; line-height: 1.5;
         }
 
+        /* ---------- Expander ("What can this agent do?") ---------- */
+        div[data-testid="stExpander"] {
+            border: 1px solid var(--border) !important;
+            border-radius: 14px !important;
+            background: var(--surface) !important;
+            box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.08);
+            margin-bottom: 1.4rem;
+            overflow: hidden;
+        }
+        div[data-testid="stExpander"] details,
+        div[data-testid="stExpander"] summary {
+            background: var(--surface) !important;
+            color: var(--ink) !important;
+        }
+        div[data-testid="stExpander"] summary p,
+        div[data-testid="stExpander"] summary span,
+        div[data-testid="stExpander"] summary svg {
+            color: var(--ink) !important;
+            fill: var(--ink) !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stExpander"] summary:hover {
+            background: #f1f5f9 !important;
+        }
+
         /* ---------- Capability cards ---------- */
         .cap-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 14px; padding: 1.1rem 1.3rem; height: 100%;
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 14px;
+            padding: 1.1rem 1.3rem;
+            height: 100%;
             transition: box-shadow 0.15s ease, transform 0.15s ease;
         }
         .cap-card:hover {
@@ -168,17 +206,34 @@ st.markdown(
         }
         .cap-icon.sql { background: var(--accent-light); }
         .cap-icon.etl { background: #ecfdf5; }
-        .cap-title { font-weight: 700; font-size: 0.92rem; color: var(--ink) !important; margin-bottom: 0.25rem; }
-        .cap-desc { font-size: 0.82rem; color: var(--muted) !important; line-height: 1.45; margin: 0; }
+        .cap-card .cap-title {
+            font-weight: 700; font-size: 0.92rem;
+            color: var(--ink) !important; margin-bottom: 0.25rem;
+        }
+        .cap-card p.cap-desc {
+            font-size: 0.82rem; color: var(--muted) !important;
+            line-height: 1.45; margin: 0;
+        }
 
-        /* ---------- Sidebar ---------- */
+        /* ---------- Sidebar & Inputs ---------- */
         section[data-testid="stSidebar"] {
-            background: var(--surface) !important; border-right: 1px solid var(--border);
+            background: var(--surface) !important;
+            border-right: 1px solid var(--border) !important;
         }
         section[data-testid="stSidebar"] .block-container { padding-top: 1.6rem; }
         section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] span,
         section[data-testid="stSidebar"] .stCaption {
             color: var(--ink) !important;
+        }
+        section[data-testid="stSidebar"] input,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
+        section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] {
+            background-color: #f8fafc !important;
+            color: var(--ink) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
         }
         .sb-section-label {
             font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
@@ -200,29 +255,47 @@ st.markdown(
         .status-pill.on { background: #ecfdf5; color: var(--success) !important; }
         .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-        /* ---------- Buttons & inputs ---------- */
+        /* ---------- Buttons ---------- */
         .stButton > button {
             border-radius: 9px; font-weight: 600; font-size: 0.85rem;
             border: 1px solid var(--accent); background: var(--accent); color: white !important;
             padding: 0.45rem 1rem; transition: all 0.15s ease;
         }
         .stButton > button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
-        div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] > div {
-            border-radius: 8px !important;
-        }
 
-        /* ---------- Chat & Misc ---------- */
+        /* ---------- Bottom Chat Bar & Chat Input ---------- */
         .stChatMessage {
-            background: var(--surface) !important; border: 1px solid var(--border) !important;
-            border-radius: 14px; padding: 0.6rem 0.8rem; margin-bottom: 0.6rem;
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 14px;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.6rem;
             color: var(--ink) !important;
         }
-        div[data-testid="stChatInput"] textarea { border-radius: 12px; }
-        hr { border: none; border-top: 1px solid var(--border); margin: 0.9rem 0; }
-        div[data-testid="stExpander"] {
-            border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
-            box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.1); margin-bottom: 1.4rem;
+        div[data-testid="stBottom"],
+        div[data-testid="stBottom"] > div {
+            background-color: var(--bg) !important;
         }
+        div[data-testid="stChatInput"] {
+            background-color: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+        }
+        div[data-testid="stChatInput"] > div {
+            background-color: var(--surface) !important;
+        }
+        div[data-testid="stChatInput"] textarea {
+            background-color: var(--surface) !important;
+            color: var(--ink) !important;
+            caret-color: var(--accent) !important;
+        }
+        div[data-testid="stChatInput"] textarea::placeholder {
+            color: #94a3b8 !important;
+        }
+        div[data-testid="stChatInput"] button {
+            color: var(--accent) !important;
+        }
+        hr { border: none; border-top: 1px solid var(--border); margin: 0.9rem 0; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -256,7 +329,8 @@ with st.expander("🧭  What can this agent do?", expanded=True):
                 <div class="cap-title">SQL Analyst</div>
                 <p class="cap-desc">Answers questions about your PostgreSQL database. Curates the question, generates SQL, runs it past a safety judge, executes it, and explains the result.</p>
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
@@ -266,7 +340,8 @@ with st.expander("🧭  What can this agent do?", expanded=True):
                 <div class="cap-title">ETL Analyst</div>
                 <p class="cap-desc">Extracts data from an API and saves it as CSV/JSON/Parquet, or transforms an uploaded CSV with a Pandas operation and saves the result.</p>
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True,
         )
 
 # ============================================================
@@ -279,9 +354,10 @@ with st.sidebar:
             <div class="sb-brand-mark">A</div>
             <div class="sb-brand-name">Agent Setup</div>
         </div>
-        """, unsafe_allow_html=True,
+        """,
+        unsafe_allow_html=True,
     )
-    
+
     # --- BYOK API Key Section ---
     st.markdown("<div class='sb-section-label'>🔑 API Configuration</div>", unsafe_allow_html=True)
     provider = st.selectbox("Select LLM Provider", ["Groq", "Google Gemini", "Mistral"])
@@ -320,7 +396,7 @@ with st.sidebar:
 if not api_key:
     st.info(f"👈 **Please enter your {provider} API key in the sidebar to unlock the chat.**")
     st.stop()
-    
+
 # Dynamically inject the key into environment variables
 os.environ["LLM_PROVIDER"] = provider
 if provider == "Groq":
