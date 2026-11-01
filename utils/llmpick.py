@@ -38,9 +38,9 @@ def pickllm(level: str):
 
     # 3. Groq (Fast & free)
     model_map = {
-        "low": "llama-3.1-8b-instant",
-        "medium": "llama-3.3-70b-versatile",
-        "high": "llama-3.3-70b-versatile",
+        "low": "openai/gpt-oss-20b",
+        "medium": "openai/gpt-oss-20b",
+        "high": "openai/gpt-oss-120b",
     }
     return ChatGroq(
         model=model_map[level],
