@@ -11,6 +11,12 @@ from langchain_core.messages import HumanMessage
 
 # Load .env for local fallback (database creds, etc.)
 load_dotenv()
+try:
+    for k in ("host", "port", "user", "password", "database"):
+        if k in st.secrets and k not in os.environ:
+            os.environ[k] = str(st.secrets[k])
+except Exception:
+    pass
 
 # ============================================================
 # Helpers
@@ -316,6 +322,7 @@ if not api_key:
     st.stop()
     
 # Dynamically inject the key into environment variables
+os.environ["LLM_PROVIDER"] = provider
 if provider == "Groq":
     os.environ["GROQ_API_KEY"] = api_key
 elif provider == "Google Gemini":

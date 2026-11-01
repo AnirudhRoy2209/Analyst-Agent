@@ -6,6 +6,7 @@ from langchain_mistralai import ChatMistralAI
 
 load_dotenv()
 
+
 def pickllm(level: str):
     level = level.lower()
     if level not in ("low", "medium", "high"):
@@ -14,20 +15,16 @@ def pickllm(level: str):
     provider = os.getenv("LLM_PROVIDER", "")
 
     # 1. Google Gemini
-    if provider == "Google Gemini" or (not provider and os.getenv("GOOGLE_API_KEY")):
-        model_map = {
-            "low": "gemini-3.8-flash",
-            "medium": "gemini-3.8-flash",
-            "high": "gemini-3.8-flash",
-        }
+    if provider == "Google Gemini":
         return ChatGoogleGenerativeAI(
-            model=model_map[level],
+            model="gemini-3.8-flash",
             temperature=0,
+            max_retries=5,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
 
     # 2. Mistral
-    if provider == "Mistral" or (not provider and os.getenv("MISTRAL_API_KEY")):
+    if provider == "Mistral":
         model_map = {
             "low": "mistral-small-latest",
             "medium": "mistral-small-latest",
@@ -39,11 +36,11 @@ def pickllm(level: str):
             api_key=os.getenv("MISTRAL_API_KEY"),
         )
 
-    # 3. Default: Groq
+    # 3. Groq (Fast & free)
     model_map = {
-        "low": "openai/gpt-oss-20b",
-        "medium": "qwen/qwen3.8-27b",
-        "high": "openai/gpt-oss-120b",
+        "low": "llama-3.1-8b-instant",
+        "medium": "llama-3.3-70b-versatile",
+        "high": "llama-3.3-70b-versatile",
     }
     return ChatGroq(
         model=model_map[level],
